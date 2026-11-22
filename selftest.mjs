@@ -1,5 +1,5 @@
 // Run with: node scripts/selftest.mjs   (needs "type": "module" in package.json, which Vite projects have)
-import { runSelfTests } from '../src/selftest.js';
+import { runSelfTests } from '/selftest.js';
 
 const results = runSelfTests();
 results.forEach((r) => console.log(`${r.pass ? 'PASS' : 'FAIL'}  ${r.name}: expected ${r.expected}, got ${r.actual}`));
