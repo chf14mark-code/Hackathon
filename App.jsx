@@ -494,7 +494,7 @@ export default function App() {
     const specs = flightsFor(lsuExec || view);
     const or = overlay.getBoundingClientRect();
     const find = (id) => anchors.current[id] || (id.startsWith('pl-') ? anchors.current.program : null);
-    
+
     specs.forEach((sp) => {
       const A = find(sp.from);
       const B = find(sp.to);
@@ -593,12 +593,12 @@ export default function App() {
             <div className="text-2xl">
               <div>Address: <strong>{lsuExec.addrLabel}</strong></div>
               {lsuExec.access === 'uncached' ? (
-                 <div className="mt-2 text-[32px] font-bold text-blue-900">No cache: {lsuExec.latency} ticks</div>
+                <div className="mt-2 text-[32px] font-bold text-blue-900">No cache: {lsuExec.latency} ticks</div>
               ) : (
-                 <>
-                   <div className="mt-1">Box {lsuExec.line}, cells {lsuExec.start} to {lsuExec.end}</div>
-                   <div className="mt-2 text-[32px] font-bold text-blue-900">{lsuExec.access === 'hit' ? 'HIT' : 'MISS'}, {lsuExec.latency} ticks</div>
-                 </>
+                <>
+                  <div className="mt-1">Box {lsuExec.line}, cells {lsuExec.start} to {lsuExec.end}</div>
+                  <div className="mt-2 text-[32px] font-bold text-blue-900">{lsuExec.access === 'hit' ? 'HIT' : 'MISS'}, {lsuExec.latency} ticks</div>
+                </>
               )}
             </div>
           );
@@ -681,7 +681,7 @@ export default function App() {
   const execLine = runningLine !== null ? runningLine : done ? null : snap.pc;
 
   return (
-    <div 
+    <div
       className="min-h-screen bg-slate-100 text-slate-900"
       style={{ paddingBottom: bigView && cardPos === 'bottom' ? '42vh' : 0, paddingTop: bigView && cardPos === 'top' ? '42vh' : 0 }}
     >
@@ -693,6 +693,7 @@ export default function App() {
               Watch what a CPU really does with every instruction. Each step is computed by a simulator as you go, not played back from a recording.
             </p>
           </div>
+          <a href="#/guide" target="_blank" rel="noopener" className="text-sm font-semibold text-blue-700 hover:underline">Assembly guide</a>
         </div>
       </header>
 
@@ -705,7 +706,10 @@ export default function App() {
               <li>Press <b>Next step</b> and read the sentence under the buttons. Watch the registers: they really change.</li>
               <li>Most instructions take 1 tick. Reading memory can take 100 ticks, unless the data is already on the <b>Desk</b> (the cache). Try switching the cache off at the end.</li>
             </ol>
-            <button type="button" className={`${btnPlain} mt-2`} onClick={() => setShowIntro(false)}>Got it</button>
+            <div className="mt-2 flex items-center gap-4">
+              <button type="button" className={btnPlain} onClick={() => setShowIntro(false)}>Got it</button>
+              <a href="#/guide" target="_blank" rel="noopener" className="text-sm font-medium text-blue-700 hover:underline">Assembly guide: what instructions exist?</a>
+            </div>
           </section>
         )}
 
@@ -803,7 +807,7 @@ export default function App() {
                   </button>
                 )}
               </div>
-              <p className="mt-1 text-xs text-slate-600">Instructions are read from here, not from the cache. Reading them is free.</p>
+              <p className="mt-1 text-xs text-slate-600">Instructions are read from here, not from the cache. Reading them is free. <a href="#/guide" target="_blank" rel="noopener" className="text-blue-700 hover:underline">What do these instructions mean?</a></p>
               {!editing ? (
                 <ol className="mt-2 space-y-1">
                   {instrs.map((ins, i) => {
@@ -1084,9 +1088,9 @@ export default function App() {
               </button>
             </div>
           </div>
-          
+
           <p className="font-serif text-[18px] leading-snug text-slate-900">{caption}</p>
-          
+
           {view && bigNumbers && (
             <div className="rounded border border-slate-200 bg-slate-50 p-5">
               {bigNumbers}
