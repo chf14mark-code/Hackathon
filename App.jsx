@@ -1,3 +1,4 @@
+/* src/App.jsx */
 import React, { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Clock, Pause, Pencil, Play, RotateCcw, SkipForward, StepForward, Trash2 } from 'lucide-react';
 import {
@@ -343,11 +344,15 @@ export default function App() {
   const instrs = program.instrs;
   const draftCheck = useMemo(() => (editing ? parseProgram(draft) : null), [editing, draft]);
 
+  // View preferences
+  const [speed, setSpeed] = useState(1);
+  const [bigView, setBigView] = useState(false);
+  const [cardPos, setCardPos] = useState('bottom');
+
   // The simulation. `exec` holds the phases of the instruction being shown.
   const [run, setRun] = useState(() => ({ machine: createMachine({ memory: defaultMemory(), cacheEnabled: true }), exec: null }));
   const { machine, exec } = run;
   const [playing, setPlaying] = useState(false);
-  const [speed, setSpeed] = useState(1);
   const [showIntro, setShowIntro] = useState(true);
   const [details, setDetails] = useState(false);
   const [selectedCell, setSelectedCell] = useState(null);
@@ -489,6 +494,7 @@ export default function App() {
     const specs = flightsFor(lsuExec || view);
     const or = overlay.getBoundingClientRect();
     const find = (id) => anchors.current[id] || (id.startsWith('pl-') ? anchors.current.program : null);
+    
     specs.forEach((sp) => {
       const A = find(sp.from);
       const B = find(sp.to);
@@ -496,17 +502,18 @@ export default function App() {
       const pa = ctr(rel(A.getBoundingClientRect(), or));
       const pb = ctr(rel(B.getBoundingClientRect(), or));
       const el = document.createElement('div');
-      el.className = 'flight-chip';
+      el.className = `flight-chip ${bigView ? 'flight-chip--big' : ''}`;
       el.textContent = sp.text;
       el.style.background = TONES[sp.tone].hex;
       overlay.appendChild(el);
+      const maxScale = bigView ? 1.4 : 1;
       const at = (p, s) => `translate(${p.x}px, ${p.y}px) translate(-50%, -50%) scale(${s})`;
       const anim = el.animate(
         [
-          { transform: at(pa, 0.6), opacity: 0 },
-          { transform: at(pa, 1), opacity: 1, offset: 0.12 },
-          { transform: at(pb, 1), opacity: 1, offset: 0.88 },
-          { transform: at(pb, 0.6), opacity: 0 },
+          { transform: at(pa, 0.6 * maxScale), opacity: 0 },
+          { transform: at(pa, 1 * maxScale), opacity: 1, offset: 0.12 },
+          { transform: at(pb, 1 * maxScale), opacity: 1, offset: 0.88 },
+          { transform: at(pb, 0.6 * maxScale), opacity: 0 },
         ],
         { duration: Math.max(250, sp.dur * total), delay: sp.delay * total, easing: 'ease-in-out', fill: 'both' },
       );
@@ -514,7 +521,7 @@ export default function App() {
       flights.current.push({ el, anim });
     });
     return clear;
-  }, [view]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [view, speed, bigView]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /* ------------------------------------------------------- derived views -- */
   const stage = stripId(view);
@@ -542,6 +549,74 @@ export default function App() {
     if (v.length < 2) return null;
     return v.reduce((a, b) => (b.lastUsed < a.lastUsed ? b : a)).tag;
   })();
+
+  /* ------------------------------------------------- Big View Formatting -- */
+  const stageIdx = STRIP.findIndex((s) => s.id === stage);
+  let bigNumbers = null;
+
+  if (view) {
+    switch (view.kind) {
+      case 'fetch':
+        bigNumbers = <div className="text-3xl font-bold">PC: {view.pc} &rarr; <code className="text-amber-900">"{view.text}"</code></div>;
+        break;
+      case 'pc-update':
+        bigNumbers = <div className="text-4xl font-bold">{view.from} &rarr; {view.to}</div>;
+        break;
+      case 'decode':
+        bigNumbers = (
+          <div className="space-y-4">
+            <ul className="flex flex-wrap gap-4 text-xl">
+              {view.parts.map((p, i) => (
+                <li key={i}><code className="font-bold text-violet-900">{p.text}</code>: {p.meaning}</li>
+              ))}
+            </ul>
+            <p className="text-2xl font-bold text-violet-900">{view.route}</p>
+          </div>
+        );
+        break;
+      case 'execute':
+        if (view.unit === 'ALU') {
+          bigNumbers = (
+            <div className="text-center">
+              <div className="text-2xl text-slate-600 font-mono">{view.aLabel} {view.symbol} {view.bLabel}</div>
+              <div className="mt-2 text-[40px] font-bold font-mono text-orange-900">{view.a} {view.symbol} {view.b} = {view.result}</div>
+            </div>
+          );
+        } else if (view.unit === 'CU') {
+          if (view.op === 'MOV') {
+            bigNumbers = <div className="text-[32px] font-bold text-violet-900">Value: {view.value}</div>;
+          } else {
+            bigNumbers = <div className="text-[32px] font-bold text-violet-900">{view.regName} is {view.regValue} &rarr; {view.taken ? 'JUMP' : 'NO JUMP'}</div>;
+          }
+        } else if (view.unit === 'LSU' && lsuExec) {
+          bigNumbers = (
+            <div className="text-2xl">
+              <div>Address: <strong>{lsuExec.addrLabel}</strong></div>
+              {lsuExec.access === 'uncached' ? (
+                 <div className="mt-2 text-[32px] font-bold text-blue-900">No cache: {lsuExec.latency} ticks</div>
+              ) : (
+                 <>
+                   <div className="mt-1">Box {lsuExec.line}, cells {lsuExec.start} to {lsuExec.end}</div>
+                   <div className="mt-2 text-[32px] font-bold text-blue-900">{lsuExec.access === 'hit' ? 'HIT' : 'MISS'}, {lsuExec.latency} ticks</div>
+                 </>
+              )}
+            </div>
+          );
+        }
+        break;
+      case 'writeback':
+        if (view.target === 'register') {
+          bigNumbers = <div className="text-4xl font-bold">{view.name}: <span className="text-slate-500 font-normal">{view.oldValue} &rarr;</span> {view.newValue}</div>;
+        } else if (view.target === 'memory') {
+          bigNumbers = <div className="text-4xl font-bold">Cell {view.address}: <span className="text-slate-500 font-normal">{view.oldValue} &rarr;</span> {view.newValue}</div>;
+        } else {
+          bigNumbers = <div className="text-3xl font-bold text-slate-500">Nothing to store</div>;
+        }
+        break;
+      default:
+        break;
+    }
+  }
 
   /* ------------------------------------------------------------ rendering -- */
   const aluStatus = (() => {
@@ -604,10 +679,12 @@ export default function App() {
   })();
 
   const execLine = runningLine !== null ? runningLine : done ? null : snap.pc;
-  const stageIdx = STRIP.findIndex((s) => s.id === stage);
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
+    <div 
+      className="min-h-screen bg-slate-100 text-slate-900"
+      style={{ paddingBottom: bigView && cardPos === 'bottom' ? '42vh' : 0, paddingTop: bigView && cardPos === 'top' ? '42vh' : 0 }}
+    >
       <header className="border-b border-slate-300 bg-white">
         <div className="mx-auto flex max-w-[1400px] flex-wrap items-end justify-between gap-3 px-4 py-3">
           <div>
@@ -653,10 +730,23 @@ export default function App() {
           <span className="mx-1 hidden h-6 w-px bg-slate-300 sm:block" />
           <label className="flex items-center gap-1.5 text-sm">
             Speed
-            <select className="rounded border border-slate-400 bg-white px-1.5 py-1 text-sm" value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
-              {[0.25, 0.5, 1, 2, 4, 8].map((s) => <option key={s} value={s}>{s}x</option>)}
+            <select
+              className="rounded border border-slate-400 bg-white px-1.5 py-1 text-sm"
+              value={speed}
+              onChange={(e) => {
+                const s = Number(e.target.value);
+                setSpeed(s);
+                if (s === 0.25) setBigView(true);
+              }}
+            >
+              {[0.25, 0.5, 1, 2, 4, 8].map((s) => <option key={s} value={s}>{s === 0.25 ? '0.25x slow motion' : `${s}x`}</option>)}
             </select>
           </label>
+          <label className="flex items-center gap-1.5 text-sm">
+            <input type="checkbox" className="h-4 w-4" checked={bigView} onChange={(e) => setBigView(e.target.checked)} />
+            Big view (pop-up explanations)
+          </label>
+          <span className="mx-1 hidden h-6 w-px bg-slate-300 sm:block" />
           <label className="flex items-center gap-1.5 text-sm">
             <input type="checkbox" className="h-4 w-4" checked={cacheOn} onChange={(e) => toggleCache(e.target.checked)} />
             Desk (cache) on
@@ -973,6 +1063,41 @@ export default function App() {
           </p>
         </footer>
       </main>
+
+      {/* Feature: Big view (pop-up explanations) */}
+      {bigView && (
+        <div
+          aria-hidden="true"
+          className={`fixed z-50 flex flex-col gap-4 overflow-y-auto border-4 border-slate-900 bg-white p-6 shadow-2xl transition-all ${cardPos === 'bottom' ? 'bottom-0' : 'top-0'}`}
+          style={{ left: '50%', transform: 'translateX(-50%)', width: 'min(760px, 100vw - 2rem)', maxHeight: '40vh' }}
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="text-sm font-bold uppercase tracking-wider text-slate-500">
+              {view ? `Step ${stageIdx + 1} of 5: Fetch | PC + 1 | Decode | Execute | Write-back` : (done ? 'Finished' : 'Ready')}
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <button type="button" className={btnPlain} onClick={() => setCardPos(cardPos === 'bottom' ? 'top' : 'bottom')}>
+                Move to {cardPos === 'bottom' ? 'top' : 'bottom'}
+              </button>
+              <button type="button" className={btnPlain} onClick={() => setBigView(false)}>
+                Hide pop-ups
+              </button>
+            </div>
+          </div>
+          
+          <p className="font-serif text-[18px] leading-snug text-slate-900">{caption}</p>
+          
+          {view && bigNumbers && (
+            <div className="rounded border border-slate-200 bg-slate-50 p-5">
+              {bigNumbers}
+            </div>
+          )}
+
+          <div className="text-right font-mono text-xl font-bold text-slate-700">
+            Tick counter: {shownTicks}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
