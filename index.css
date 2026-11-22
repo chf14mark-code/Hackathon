@@ -1,3 +1,4 @@
+/* src/index.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -41,4 +42,11 @@ body {
   * {
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Feature: Big view (pop-up explanations) enlarged chips */
+.flight-chip--big {
+  font-size: 18px;
+  padding: 6px 16px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.5);
 }
