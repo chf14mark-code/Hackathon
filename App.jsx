@@ -654,7 +654,7 @@ export default function App() {
           <label className="flex items-center gap-1.5 text-sm">
             Speed
             <select className="rounded border border-slate-400 bg-white px-1.5 py-1 text-sm" value={speed} onChange={(e) => setSpeed(Number(e.target.value))}>
-              {[0.5, 1, 2, 4, 8].map((s) => <option key={s} value={s}>{s}x</option>)}
+              {[0.25, 0.5, 1, 2, 4, 8].map((s) => <option key={s} value={s}>{s}x</option>)}
             </select>
           </label>
           <label className="flex items-center gap-1.5 text-sm">
